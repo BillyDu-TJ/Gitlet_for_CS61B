@@ -26,7 +26,9 @@ public class Commit implements Serializable {
     private String message;
     /** The timestamp of this Commit. */
     private Date timestamp;
-    /** The parent(s) of this Commit. */
+    /** The parent(s) of this Commit.
+     * parents[0] is the HEAD parent
+     * parents[1...] are merged parents. */
     private List<String> parents;
     /** The mapping of file names to blob SHA-1s in this Commit. */
     private Map<String, String> blobs;
@@ -42,10 +44,10 @@ public class Commit implements Serializable {
     }
 
     /** create a new commit with all info. */
-    public Commit(String createMessage, Date time, List<String> parentCommits,
+    public Commit(String createMessage, List<String> parentCommits,
                   Map<String, String> blobMapping) {
         message = createMessage;
-        timestamp = time;
+        timestamp = new Date();
         parents = parentCommits;
         blobs = blobMapping;
     }
@@ -58,5 +60,19 @@ public class Commit implements Serializable {
     /** get the blob SHA1 of a file in this commit. */
     public String getBlobSHA1(String filename) {
         return blobs.get(filename);
+    }
+
+    /** get the mapping of blobs in this commit. */
+    public Map<String, String> getBlobs() {
+        if (blobs == null) {
+            return new HashMap<>();
+        }
+        return blobs;
+    }
+
+    /** get the first parent of this commit
+     * which is the HEAD parent. */
+    public String getFirstParent() {
+        return parents.isEmpty() ? null : parents.getFirst();
     }
 }

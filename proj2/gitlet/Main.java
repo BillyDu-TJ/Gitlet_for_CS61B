@@ -28,7 +28,32 @@ public class Main {
                 Repository.status();
                 break;
             case "commit":
-            // TODO: FILL THE REST IN
+                String message = args[1];
+                Repository.commit(message);
+                break;
+            case "log":
+                //TODO: implement log
+                break;
+            case "rm":
+                //TODO: implement rm
+                break;
+            case "checkout":
+                //TODO: implement checkout
+                break;
+            case "branch":
+                //TODO: implement branch
+                break;
+            case "rm-branch":
+                //TODO: implement rm-branch
+                break;
+            case "reset":
+                //TODO: implement reset
+                break;
+            case "merge":
+                //TODO: implement merge
+                break;
+            default:
+                System.out.println("No command with that name exists.");
                 break;
         }
     }

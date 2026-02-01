@@ -128,6 +128,58 @@ public class Repository {
         Utils.writeObject(STAGING, stage);
     }
 
+    /** gitlet commit [message]
+     * create a new commit with the staged files.
+     * TODO: handle the situation of 2 or more parents(merge).
+     * */
+    public static void commit(String message) {
+        /** read the staging area. */
+        Stage stage = readStage();
+
+        /** check if there are staged files. */
+        if (stage.getAddFiles().isEmpty() && stage.getRemoveFiles().isEmpty()) {
+            System.out.println("No changes added to the commit.");
+            return;
+        }
+
+        /** check if the message is valid. */
+        if (message == null || message.trim().isEmpty()) {
+            System.out.println("Please enter a commit message.");
+            return;
+        }
+
+        /** get the current commit. */
+        Commit currentCommit = getCurrentCommit();
+
+        /** create a new blob mapping for the new commit. */
+        Map<String, String> newBlobMapping = new HashMap<>(currentCommit.getBlobs());
+
+        /** add the staged files and remove the removed files.
+         * to the new blob mapping. */
+        for (String fileName : stage.getAddFiles().keySet()) {
+            String blobSHA1 = stage.getAddFiles().get(fileName);
+            newBlobMapping.put(fileName, blobSHA1);
+        }
+
+        for (String fileName : stage.getRemoveFiles()) {
+            newBlobMapping.remove(fileName);
+        }
+
+        /** create a new commit object. */
+        List<String> parentCommits = new ArrayList<>();
+        parentCommits.add(readHEAD());
+        Commit newCommit = new Commit(message, parentCommits, newBlobMapping);
+
+        /** save the new commit to the objects directory. */
+        String newCommitSHA1 = saveCommit(newCommit);
+
+        /** update the current branch to point to the new commit. */
+        saveHead(newCommitSHA1);
+
+        /** clear the staging area. */
+        clearStage();
+    }
+
     /** gitlet status
      * show the status of the repository. */
     public static void status() {
@@ -171,8 +223,16 @@ public class Repository {
      * situation 1: checkout -> saveHead("master")
      * situation 2: Detached -> saveHead("a1b2c3...")
      */
-    public static void saveHead(String headContent) {
+    public static void updateHead(String headContent) {
         writeContents(HEAD, headContent);
+    }
+
+    /** aux function: save HEAD
+     * situation: update the current branch to point to the new commit. */
+    public static void saveHead(String commitSHA1) {
+        String headRef = Utils.readContentsAsString(HEAD).trim();
+        File headFile = join(GITLET_DIR, headRef);
+        Utils.writeContents(headFile, commitSHA1);
     }
 
     /** aux function: save a blob object to the objects directory.
@@ -241,5 +301,11 @@ public class Repository {
         String fileName = commitSHA1.substring(2);
         File commitFile = join(OBJECTS_DIR, dirName, fileName);
         return Utils.readObject(commitFile, Commit.class);
+    }
+
+    /** aux function: clear the staging area. */
+    public static void clearStage() {
+        Stage emptyStage = new Stage();
+        Utils.writeObject(Repository.STAGING, emptyStage);
     }
 }
