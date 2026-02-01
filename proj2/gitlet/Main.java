@@ -15,6 +15,7 @@ public class Main {
         }
 
         String firstArg = args[0];
+
         switch(firstArg) {
             case "init":
                 Repository.initRepo();
@@ -23,7 +24,12 @@ public class Main {
                 String filenameToAdd = args[1];
                 Repository.add(filenameToAdd);
                 break;
+            case "status":
+                Repository.status();
+                break;
+            case "commit":
             // TODO: FILL THE REST IN
+                break;
         }
     }
 }

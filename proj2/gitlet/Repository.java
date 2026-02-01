@@ -1,6 +1,8 @@
 package gitlet;
 
 import java.io.File;
+import java.util.*;
+
 import static gitlet.Utils.*;
 
 // TODO: any imports you need here
@@ -58,11 +60,8 @@ public class Repository {
         /** create an initial commit. */
         Commit initialCommit = new Commit("initial commit");
 
-        /** serialize and save the initial commit. */
-        String commitSHA1 = Utils.sha1(Utils.serialize(initialCommit));
-
         /** save the initial commit to objects directory. */
-        saveCommit(initialCommit);
+        String commitSHA1 = saveCommit(initialCommit);
 
         /** create the master branch and point it to the initial commit. */
         File masterRef = join(REFS_DIR, "heads");
@@ -108,7 +107,7 @@ public class Repository {
             if (stage.isRemoved(fileName)) {
                 stage.unRemoveFile(fileName);
             }
-        } else if (currentCommit != null) {
+        } else {
 
             /** Situation B: New Changes
              * If the file is different from the one in the current commit,
@@ -120,13 +119,32 @@ public class Repository {
             if (stage.isRemoved(fileName)) {
                 stage.unRemoveFile(fileName);
             }
-        }
 
-        /** save the blob object to the objects directory. */
-        saveBlob(fileContent);
+            /** save the blob object to the objects directory. */
+            saveBlob(fileContent);
+        }
 
         /** save the staging area. */
         Utils.writeObject(STAGING, stage);
+    }
+
+    /** gitlet status
+     * show the status of the repository. */
+    public static void status() {
+        Stage stage = readStage();
+
+        /** print the staged files. */
+        Map<String, String> addFiles = stage.getAddFiles();
+        Set<String> addFileNames = addFiles.keySet();
+
+        // sort the file names.
+        List<String> addFileNamesList = new ArrayList<>(addFileNames);
+        Collections.sort(addFileNamesList);
+
+        System.out.println("=== Staged Files ===");
+        for (String file : addFileNamesList) {
+            System.out.println(file);
+        }
     }
 
     /** aux function: read the staging area. */
@@ -140,7 +158,7 @@ public class Repository {
     /** aux function: read HEAD, and return the contents
      * that HEAD refers. */
     public static String readHEAD() {
-        String headRef = Utils.readContentsAsString(HEAD);
+        String headRef = Utils.readContentsAsString(HEAD).trim();
         File headFile = join(GITLET_DIR, headRef);
         if (!headFile.exists()) {
             return null;
@@ -185,8 +203,9 @@ public class Repository {
     }
 
     /** aux function: save a commit object to the objects directory.
+     * @return : the SHA1 of the commit object.
      */
-    public static void saveCommit(Commit commit) {
+    public static String saveCommit(Commit commit) {
         /** serialize the commit object. */
         String SHA1 = Utils.sha1(Utils.serialize(commit));
 
@@ -206,6 +225,8 @@ public class Repository {
 
         /** write an empty content to the file. */
         Utils.writeObject(file, commit);
+
+        return SHA1;
     }
 
     /** aux function: get the current commit. */

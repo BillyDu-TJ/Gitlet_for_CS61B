@@ -55,4 +55,14 @@ public class Stage implements Serializable {
     public void unRemoveFile(String filename) {
         removeFiles.remove(filename);
     }
+
+    /** Get the map of files added to the stage. */
+    public Map<String, String> getAddFiles() {
+        return addFiles;
+    }
+
+    /** Get the set of files removed from the stage. */
+    public Set<String> getRemoveFiles() {
+        return removeFiles;
+    }
 }
