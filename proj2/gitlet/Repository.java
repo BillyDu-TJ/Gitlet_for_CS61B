@@ -231,18 +231,72 @@ public class Repository {
 
         Stage stage = readStage();
 
+        /** print the branches. */
+        File headsDir = join(REFS_DIR, "heads");
+        String currentHeadRef = Utils.readContentsAsString(HEAD).trim();
+
+        Set<String> branchNames = new HashSet<>();
+        for (File branchFile : Objects.requireNonNull(headsDir.listFiles())) {
+            branchNames.add(branchFile.getName());
+        }
+        List<String> branchNamesList = sortNameList(branchNames);
+
+        System.out.println("=== Branches ===");
+        for (String branch : branchNamesList) {
+            if (currentHeadRef.equals("refs/heads/" + branch)) {
+                System.out.println("*" + branch);
+            } else {
+                System.out.println(branch);
+            }
+        }
+        System.out.println();
+
         /** print the staged files. */
         Map<String, String> addFiles = stage.getAddFiles();
         Set<String> addFileNames = addFiles.keySet();
 
         // sort the file names.
-        List<String> addFileNamesList = new ArrayList<>(addFileNames);
-        Collections.sort(addFileNamesList);
+        List<String> addFileNamesList = sortNameList(addFileNames);
 
         System.out.println("=== Staged Files ===");
         for (String file : addFileNamesList) {
             System.out.println(file);
         }
+        System.out.println();
+
+        /** print the removed files. */
+        Set<String> removeFileNames = stage.getRemoveFiles();
+        List<String> removeFileNamesList = sortNameList(removeFileNames);
+
+        System.out.println("=== Removed Files ===");
+        for (String file : removeFileNamesList) {
+            System.out.println(file);
+        }
+        System.out.println();
+
+        /** print the modifications not staged for commit. */
+        System.out.println("=== Modifications Not Staged For Commit ===");
+    }
+
+    /** gitlet log
+     * show the commit history. */
+    public static void log() {
+
+    }
+
+    /** gitlet checkout -- [file name] */
+    public static void checkoutFile(String fileName) {
+
+    }
+
+    /** gitlet checkout [commit id] -- [file name] */
+    public static void checkoutCommit(String commitID, String fileName) {
+
+    }
+
+    /** gitlet checkout [branch name] */
+    public static void checkoutBranch(String branchName) {
+
     }
 
     /** aux function: check if the repository is initialized. */
@@ -360,5 +414,12 @@ public class Repository {
     public static void clearStage() {
         Stage emptyStage = new Stage();
         Utils.writeObject(Repository.STAGING, emptyStage);
+    }
+
+    /** sort name list */
+    private static List<String> sortNameList(Set<String> names) {
+        List<String> NamesList = new ArrayList<>(names);
+        Collections.sort(NamesList);
+        return NamesList;
     }
 }

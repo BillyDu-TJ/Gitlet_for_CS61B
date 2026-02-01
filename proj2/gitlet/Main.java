@@ -1,6 +1,6 @@
 package gitlet;
 
-import gitlet.Utils.*;
+import static gitlet.Utils.*;
 
 /** Driver class for Gitlet, a subset of the Git version-control system.
  *  @author BillyDu
@@ -21,16 +21,20 @@ public class Main {
         try {
             switch (firstArg) {
                 case "init":
+                    validateNumArgs(args, 1);
                     Repository.initRepo();
                     break;
                 case "add":
+                    validateNumArgs(args, 2);
                     String filenameToAdd = args[1];
                     Repository.add(filenameToAdd);
                     break;
                 case "status":
+                    validateNumArgs(args, 1);
                     Repository.status();
                     break;
                 case "commit":
+                    validateNumArgs(args, 2);
                     String message = args[1];
                     Repository.commit(message);
                     break;
@@ -38,11 +42,12 @@ public class Main {
                     //TODO: implement log
                     break;
                 case "rm":
+                    validateNumArgs(args, 2);
                     String filenameToRm = args[1];
                     Repository.rm(filenameToRm);
                     break;
                 case "checkout":
-                    //TODO: implement checkout
+                    handleCheckout(args);
                     break;
                 case "branch":
                     //TODO: implement branch
@@ -57,12 +62,45 @@ public class Main {
                     //TODO: implement merge
                     break;
                 default:
-                    System.out.println("No command with that name exists.");
-                    break;
+                    throw error("No command with that name exists.");
             }
         } catch (GitletException e) {
             System.out.println(e.getMessage());
             System.exit(0);
+        }
+    }
+
+    /** Validate the number of arguments provided.
+     *  @param args the array of arguments
+     *  @param num the expected number of arguments
+     */
+    public static void validateNumArgs(String[] args, int num) {
+        if (args.length != num) {
+            throw error("Incorrect operands.");
+        }
+    }
+
+    /** handle checkout
+     * TODO: write checkout in Repository class
+     * */
+    public static void handleCheckout(String[] args) {
+        if (args.length == 3) {
+            // checkout -- [file name]
+            if (!args[1].equals("--")) {
+                throw error("Incorrect operands.");
+            }
+            Repository.checkoutFile(args[2]);
+        } else if (args.length == 4) {
+            // checkout [commit id] -- [file name]
+            if (!args[2].equals("--")) {
+                throw error("Incorrect operands.");
+            }
+            Repository.checkoutCommit(args[1], args[3]);
+        } else if (args.length == 2) {
+            // checkout [branch name]
+            Repository.checkoutBranch(args[1]);
+        } else {
+            throw error("Incorrect operands.");
         }
     }
 }
