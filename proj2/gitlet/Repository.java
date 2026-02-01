@@ -48,9 +48,8 @@ public class Repository {
     public static void initRepo() {
         /** check if a gitlet repository already exists. */
         if (GITLET_DIR.exists()) {
-            System.out.println("A Gitlet version-control system "
+            throw error("A Gitlet version-control system "
                     + "already exists in the current directory.");
-            return;
         }
         GITLET_DIR.mkdir();
         OBJECTS_DIR.mkdir();
@@ -77,10 +76,12 @@ public class Repository {
     /** gitlet add [file name]
      * add blobs to the staging area. */
     public static void add(String fileName) {
+        /** check if the repository is initialized. */
+        checkInit();
+
         File file = join(CWD, fileName);
         if (!file.exists()) {
-            System.out.println("File does not exist.");
-            return;
+            throw error("File does not exist.");
         }
 
         /** read the staging area. */
@@ -133,19 +134,20 @@ public class Repository {
      * TODO: handle the situation of 2 or more parents(merge).
      * */
     public static void commit(String message) {
+        /** check if the repository is initialized. */
+        checkInit();
+
         /** read the staging area. */
         Stage stage = readStage();
 
         /** check if there are staged files. */
         if (stage.getAddFiles().isEmpty() && stage.getRemoveFiles().isEmpty()) {
-            System.out.println("No changes added to the commit.");
-            return;
+            throw error("No changes added to the commit.");
         }
 
         /** check if the message is valid. */
         if (message == null || message.trim().isEmpty()) {
-            System.out.println("Please enter a commit message.");
-            return;
+            throw error("Please enter a commit message.");
         }
 
         /** get the current commit. */
@@ -180,9 +182,53 @@ public class Repository {
         clearStage();
     }
 
+    /** gitlet rm [file name]
+     * remove a file from the staging area or
+     * mark it for removal in the next commit. */
+    public static void rm(String fileName) {
+        /** check if the repository is initialized. */
+        checkInit();
+
+        File file = join(CWD, fileName);
+
+        /** read the staging area and commit. */
+        Stage stage = readStage();
+        Commit currentCommit = getCurrentCommit();
+
+        if (!stage.isAdded(fileName)
+                && (currentCommit == null || !currentCommit.isTracked(fileName))) {
+            System.out.println("No reason to remove the file.");
+            return;
+        }
+
+        /** Situation A: Unstage a file
+         * If the file is staged for addition, unstage it. */
+        if (stage.isAdded(fileName)) {
+            stage.unstageFile(fileName);
+        }
+
+        /** Situation B: Mark a file for removal
+         * If the file is tracked in the current commit,
+         * stage it for removal and delete it from the working directory
+         * if it exists. */
+        if (currentCommit != null && currentCommit.isTracked(fileName)) {
+            stage.removeFile(fileName);
+
+            if (file.exists()) {
+                Utils.restrictedDelete(file);
+            }
+        }
+
+        /** save the staging area. */
+        Utils.writeObject(STAGING, stage);
+    }
+
     /** gitlet status
      * show the status of the repository. */
     public static void status() {
+        /** check if the repository is initialized. */
+        checkInit();
+
         Stage stage = readStage();
 
         /** print the staged files. */
@@ -196,6 +242,13 @@ public class Repository {
         System.out.println("=== Staged Files ===");
         for (String file : addFileNamesList) {
             System.out.println(file);
+        }
+    }
+
+    /** aux function: check if the repository is initialized. */
+    private static void checkInit() {
+        if (!GITLET_DIR.exists()) {
+            throw error("Not in an initialized Gitlet directory.");
         }
     }
 
