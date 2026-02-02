@@ -1,5 +1,7 @@
 package gitlet;
 
+import java.util.Objects;
+
 import static gitlet.Utils.*;
 
 /** Driver class for Gitlet, a subset of the Git version-control system.
@@ -27,7 +29,12 @@ public class Main {
                 case "add":
                     validateNumArgs(args, 2);
                     String filenameToAdd = args[1];
-                    Repository.add(filenameToAdd);
+                    if (Objects.equals(filenameToAdd, ".")) {
+                        Repository.addAll();
+                    }
+                    else {
+                        Repository.add(filenameToAdd);
+                    }
                     break;
                 case "status":
                     validateNumArgs(args, 1);

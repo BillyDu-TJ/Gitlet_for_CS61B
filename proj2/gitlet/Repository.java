@@ -80,50 +80,42 @@ public class Repository {
         /** check if the repository is initialized. */
         checkInit();
 
-        File file = join(CWD, fileName);
-        if (!file.exists()) {
-            throw error("File does not exist.");
-        }
+        /** read the staging area. */
+        Stage stage = readStage();
+
+        /** stage the file. */
+        Commit currentCommit = getCurrentCommit();
+        stageSingleFile(fileName, stage, currentCommit);
+
+        /** save the staging area. */
+        Utils.writeObject(STAGING, stage);
+    }
+
+    /** gitlet add .
+     * add all files in the current working directory to the staging area.
+     */
+    public static void addAll() {
+        /** check if the repository is initialized. */
+        checkInit();
 
         /** read the staging area. */
         Stage stage = readStage();
 
-        /** read the file content and create a blob object. */
-        byte[] fileContent = Utils.readContents(file);
-        String fileSHA1 = Utils.sha1(fileContent);
-
-        /** get the current commit and check if the file exists. */
+        /** get the current commit. */
         Commit currentCommit = getCurrentCommit();
-        if (currentCommit != null && currentCommit.isTracked(fileName) &&
-                currentCommit.getBlobSHA1(fileName).equals(fileSHA1)) {
 
-            /** Situation A: Revoke Changes
-             * If the file is the same as the one in the current commit,
-             * do not stage it and remove it from the staging area.
-             * If it is staged for removal, unstage it.
-             */
-            if (stage.isAdded(fileName)) {
-                stage.unstageFile(fileName);
-            }
+        /** get all files in the current working directory. */
+        List<String> fileNames = plainFilenamesIn(CWD);
+        if (fileNames == null) {
+            throw error("No files to add.");
+        }
 
-            if (stage.isRemoved(fileName)) {
-                stage.unRemoveFile(fileName);
-            }
-        } else {
+        /** add each file to the staging area. */
+        for (String fileName : fileNames) {
+            /** TODO: ignore hidden files in .gitletIgnore */
+            if (fileName.startsWith(".")) continue;
 
-            /** Situation B: New Changes
-             * If the file is different from the one in the current commit,
-             * or is a new file, stage it for addition.
-             * If it is staged for removal, unstage it.
-             */
-            stage.addFile(fileName, fileSHA1);
-
-            if (stage.isRemoved(fileName)) {
-                stage.unRemoveFile(fileName);
-            }
-
-            /** save the blob object to the objects directory. */
-            saveBlob(fileContent);
+            stageSingleFile(fileName, stage, currentCommit);
         }
 
         /** save the staging area. */
@@ -378,6 +370,50 @@ public class Repository {
             return new Stage();
         }
         return Utils.readObject(STAGING, Stage.class);
+    }
+
+    /** aux function: stage a single file. */
+    private static void stageSingleFile(String fileName, Stage stage, Commit currentCommit) {
+        File file = join(CWD, fileName);
+        if (!file.exists()) {
+            throw error("File does not exist.");
+        }
+
+        /** read the file content and create a blob object. */
+        byte[] fileContent = Utils.readContents(file);
+        String fileSHA1 = Utils.sha1(fileContent);
+
+        if (currentCommit != null && currentCommit.isTracked(fileName) &&
+                currentCommit.getBlobSHA1(fileName).equals(fileSHA1)) {
+
+            /** Situation A: Revoke Changes
+             * If the file is the same as the one in the current commit,
+             * do not stage it and remove it from the staging area.
+             * If it is staged for removal, unstage it.
+             */
+            if (stage.isAdded(fileName)) {
+                stage.unstageFile(fileName);
+            }
+
+            if (stage.isRemoved(fileName)) {
+                stage.unRemoveFile(fileName);
+            }
+        } else {
+
+            /** Situation B: New Changes
+             * If the file is different from the one in the current commit,
+             * or is a new file, stage it for addition.
+             * If it is staged for removal, unstage it.
+             */
+            stage.addFile(fileName, fileSHA1);
+
+            if (stage.isRemoved(fileName)) {
+                stage.unRemoveFile(fileName);
+            }
+
+            /** save the blob object to the objects directory. */
+            saveBlob(fileContent);
+        }
     }
 
     /** aux function: read HEAD, and return the contents
