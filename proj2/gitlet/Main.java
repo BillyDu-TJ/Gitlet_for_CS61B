@@ -41,6 +41,9 @@ public class Main {
                 case "log":
                     Repository.log();
                     break;
+                case "global-log":
+                    Repository.global_log();
+                    break;
                 case "rm":
                     validateNumArgs(args, 2);
                     String filenameToRm = args[1];

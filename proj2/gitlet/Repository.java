@@ -281,7 +281,7 @@ public class Repository {
 
     /** gitlet log
      * show the commit history.
-     * TODO: cope with the merge situation. */
+     */
     public static void log() {
         /** check if the repository is initialized. */
         checkInit();
@@ -292,17 +292,7 @@ public class Repository {
         /** traverse the commit history. */
         while (currentCommit != null) {
             /** get the commit info. */
-            String commitSHA1 = sha1(serialize(currentCommit));
-            String message = currentCommit.getMessage();
-            Date date = currentCommit.getTimestamp();
-
-            System.out.println("===");
-            System.out.println("commit " + commitSHA1);
-            /** TODO: cope with the merge situation here. */
-
-            System.out.println("Date: " + formatDate(date));
-            System.out.println(message);
-            System.out.println();
+            currentCommit.printCommit();
 
             /** move to the parent commit. */
             String parentSHA1 = currentCommit.getFirstParent();
@@ -310,6 +300,53 @@ public class Repository {
                 break;
             }
             currentCommit = getCommitBySHA1(parentSHA1);
+        }
+    }
+
+    /** gitlet global-log
+     * show all commits in repository.
+     * differs from CS61B's demand:
+     * 1. it's similar to 'git log --all' in real git.
+     *    will not print dangling commits.
+     * 2. the order of commits is not strictly defined.
+     * */
+    public static void global_log() {
+        /** check if the repository is initialized. */
+        checkInit();
+
+        /** get the latest version commit of every branch. */
+        List<String> allBranchHeadName = plainFilenamesIn( join(REFS_DIR ,"heads"));
+        List<String> branchHeadCommits = new ArrayList<>();
+        for (String branchName : allBranchHeadName) {
+            File headFile = join(REFS_DIR, "heads", branchName);
+            branchHeadCommits.add(readContentsAsString(headFile).trim());
+        }
+
+        /** use a set to avoid duplicate commits. */
+        Set<String> visitedCommits = new HashSet<>();
+
+        /** use queue to store every commit hash to visit. */
+        Queue<String> commitQueue = new LinkedList<>(branchHeadCommits);
+
+        while (!commitQueue.isEmpty()) {
+            /** get the current commit of the branch. */
+            String currentCommitSHA1 = commitQueue.poll();
+            Commit currentCommit = getCommitBySHA1(currentCommitSHA1);
+
+            if (visitedCommits.contains(currentCommitSHA1))
+                continue;
+
+            /** get the commit info. */
+            currentCommit.printCommit();
+            visitedCommits.add(currentCommitSHA1);
+
+            /** add parent commit(s) to the queue. */
+            if (currentCommit.getFirstParent() != null) {
+                commitQueue.add(currentCommit.getFirstParent());
+            }
+            if (currentCommit.getSecondParent() != null) {
+                commitQueue.add(currentCommit.getSecondParent());
+            }
         }
     }
 
