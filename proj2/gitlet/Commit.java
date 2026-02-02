@@ -2,10 +2,7 @@ package gitlet;
 
 // TODO: any imports you need here
 import java.io.Serializable;
-import java.util.Date; // TODO: You'll likely use this in this class
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /** Represents a gitlet commit object.
  *  TODO: It's a good idea to give a description here of what else this Class
@@ -39,7 +36,7 @@ public class Commit implements Serializable {
     public Commit(String createMessage) {
         message = createMessage;
         timestamp = new Date(0);
-        parents = null;
+        parents = new ArrayList<>();
         blobs = new HashMap<>();
     }
 
@@ -73,6 +70,18 @@ public class Commit implements Serializable {
     /** get the first parent of this commit
      * which is the HEAD parent. */
     public String getFirstParent() {
-        return parents.isEmpty() ? null : parents.getFirst();
+        if (parents == null || parents.isEmpty())
+            return null;
+        return parents.getFirst();
+    }
+
+    /** get the message of this commit. */
+    public String getMessage() {
+        return message;
+    }
+
+    /** get the timestamp of this commit. */
+    public Date getTimestamp() {
+        return timestamp;
     }
 }

@@ -1,6 +1,7 @@
 package gitlet;
 
 import java.io.File;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 import static gitlet.Utils.*;
@@ -279,9 +280,37 @@ public class Repository {
     }
 
     /** gitlet log
-     * show the commit history. */
+     * show the commit history.
+     * TODO: cope with the merge situation. */
     public static void log() {
+        /** check if the repository is initialized. */
+        checkInit();
 
+        /** get the current commit. */
+        Commit currentCommit = getCurrentCommit();
+
+        /** traverse the commit history. */
+        while (currentCommit != null) {
+            /** get the commit info. */
+            String commitSHA1 = sha1(serialize(currentCommit));
+            String message = currentCommit.getMessage();
+            Date date = currentCommit.getTimestamp();
+
+            System.out.println("===");
+            System.out.println("commit " + commitSHA1);
+            /** TODO: cope with the merge situation here. */
+
+            System.out.println("Date: " + formatDate(date));
+            System.out.println(message);
+            System.out.println();
+
+            /** move to the parent commit. */
+            String parentSHA1 = currentCommit.getFirstParent();
+            if (parentSHA1 == null) {
+                break;
+            }
+            currentCommit = getCommitBySHA1(parentSHA1);
+        }
     }
 
     /** gitlet checkout -- [file name] */
@@ -315,7 +344,7 @@ public class Repository {
     }
 
     /** aux function: read HEAD, and return the contents
-     * that HEAD refers. */
+     * that HEAD refers, which is the SHA1 of current commit. */
     public static String readHEAD() {
         String headRef = Utils.readContentsAsString(HEAD).trim();
         File headFile = join(GITLET_DIR, headRef);
@@ -410,6 +439,14 @@ public class Repository {
         return Utils.readObject(commitFile, Commit.class);
     }
 
+    /** aux function: get a commit by its SHA1. */
+    public static Commit getCommitBySHA1(String commitSHA1) {
+        String dirName = commitSHA1.substring(0, 2);
+        String fileName = commitSHA1.substring(2);
+        File commitFile = join(OBJECTS_DIR, dirName, fileName);
+        return Utils.readObject(commitFile, Commit.class);
+    }
+
     /** aux function: clear the staging area. */
     public static void clearStage() {
         Stage emptyStage = new Stage();
@@ -421,5 +458,12 @@ public class Repository {
         List<String> NamesList = new ArrayList<>(names);
         Collections.sort(NamesList);
         return NamesList;
+    }
+
+    /** aux function: format current date */
+    public static String formatDate(Date date) {
+        SimpleDateFormat formatter = new SimpleDateFormat("EEE MMM d HH:mm:ss yyyy Z",
+                Locale.US);
+        return formatter.format(date);
     }
 }

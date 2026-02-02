@@ -39,7 +39,7 @@ public class Main {
                     Repository.commit(message);
                     break;
                 case "log":
-                    //TODO: implement log
+                    Repository.log();
                     break;
                 case "rm":
                     validateNumArgs(args, 2);
