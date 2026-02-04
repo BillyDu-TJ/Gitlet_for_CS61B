@@ -20,6 +20,8 @@ public class Stage implements Serializable {
     /** The blobs removed from the stage. */
     private Set<String> removeFiles;
 
+    private static final long serialVersionUID = 123456789L;
+
     /** Crete a new stage. */
     public Stage() {
         addFiles = new HashMap<String,String>();

@@ -74,9 +74,12 @@ public class Main {
                 default:
                     throw error("No command with that name exists.");
             }
-        } catch (GitletException e) {
+        } catch (GitletException | IllegalArgumentException e) {
             System.out.println(e.getMessage());
             System.exit(0);
+        } catch (Throwable t) {
+            t.printStackTrace();
+            System.exit(1);
         }
     }
 
@@ -91,7 +94,6 @@ public class Main {
     }
 
     /** handle checkout
-     * TODO: write checkout in Repository class
      * */
     public static void handleCheckout(String[] args) {
         if (args.length == 3) {

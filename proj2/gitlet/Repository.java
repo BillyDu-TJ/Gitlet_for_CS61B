@@ -19,7 +19,9 @@ import static gitlet.Utils.*;
 public class Repository {
     /**
      * TODO:
-     * 1. add Add feature
+     * 1. add .gitletignore support in add command.
+     * 2. refractor status function.
+     * 3. handle recursion files and directories.
      *
      * List all instance variables of the Repository class here with a useful
      * comment above them describing what that variable represents and how that
@@ -70,7 +72,7 @@ public class Repository {
         Utils.writeContents(masterFile, commitSHA1);
 
         /** set HEAD to point to master branch. */
-        Utils.writeContents(HEAD, "refs/heads/master");
+        updateHeadToBranch("master");
 
     }
 
@@ -190,8 +192,7 @@ public class Repository {
 
         if (!stage.isAdded(fileName)
                 && (currentCommit == null || !currentCommit.isTracked(fileName))) {
-            System.out.println("No reason to remove the file.");
-            return;
+            throw error("No reason to remove the file.");
         }
 
         /** Situation A: Unstage a file
@@ -296,7 +297,7 @@ public class Repository {
     }
 
     /** gitlet global-log
-     * show all commits in repository.
+     * use BFS to show all commits in repository.
      * differs from CS61B's demand:
      * 1. it's similar to 'git log --all' in real git.
      *    will not print dangling commits.
@@ -344,17 +345,70 @@ public class Repository {
 
     /** gitlet checkout -- [file name] */
     public static void checkoutFile(String fileName) {
+        /** check if the repository is initialized. */
+        checkInit();
 
+        /** call checkoutCommit with the current commit ID. */
+        String currentCommitID = readHEAD();
+        checkoutCommit(currentCommitID, fileName);
     }
 
-    /** gitlet checkout [commit id] -- [file name] */
+    /** gitlet checkout [commit id] -- [file name]
+     * @param commitID: the commit id is the 6 digits prefix of SHA1 or full.
+     */
     public static void checkoutCommit(String commitID, String fileName) {
+        /** check if the repository is initialized. */
+        checkInit();
 
+        /** get the commit by commitID (6 digits prefix of SHA1)
+         * if commitID is full size(40), directly get the commit. */
+        Commit commit = commitID.length() == UID_LENGTH ?
+                getCommitBySHA1(commitID) :
+                getCommitByPrefixSHA1(commitID);
+
+        /** restore files */
+        restoreFilesFromCommit(commit, fileName);
     }
 
     /** gitlet checkout [branch name] */
     public static void checkoutBranch(String branchName) {
+        /** check if the repository is initialized. */
+        checkInit();
 
+        /** get the branch ref file. */
+        File branchRefFile = join(REFS_DIR, "heads", branchName);
+        if (!branchRefFile.exists()) {
+            throw error("No such branch exists.");
+        }
+        if (isCurrentBranch(branchName)) {
+            throw error("No need to checkout the current branch.");
+        }
+
+        /** get the commit that the branch points to and current commit. */
+        String targetCommitSHA1 = Utils.readContentsAsString(branchRefFile).trim();
+        Commit targetCommit = getCommitBySHA1(targetCommitSHA1);
+        Map<String, String> targetBlobs = targetCommit.getBlobs();
+
+        Commit currentCommit = getCurrentCommit();
+        Map<String, String> currentBlobs = currentCommit.getBlobs();
+
+        /** check for untracked files that would be overwritten. */
+        checkUntrackedConflict(targetCommit, currentCommit);
+
+        /** delete files tracked in current commit
+         * but not in target commit. */
+        clearOldTrackedFiles(targetCommit, currentCommit);
+
+        /** restore all files in the commit to the working directory. */
+        for (String fileName : targetBlobs.keySet()) {
+            restoreFilesFromCommit(targetCommit, fileName);
+        }
+
+        /** update HEAD to point to the target branch. */
+        updateHeadToBranch(branchName);
+
+        /** clear the staging area. */
+        clearStage();
     }
 
     /** aux function: check if the repository is initialized. */
@@ -429,11 +483,11 @@ public class Repository {
 
     /**
      * aux function：update HEAD
-     * situation 1: checkout -> saveHead("master")
-     * situation 2: Detached -> saveHead("a1b2c3...")
+     * situation: checkout -> saveHead("master")
      */
-    public static void updateHead(String headContent) {
-        writeContents(HEAD, headContent);
+    public static void updateHeadToBranch(String branchName) {
+        String refPath = String.join("/", "refs", "heads", branchName);
+        writeContents(HEAD, refPath);
     }
 
     /** aux function: save HEAD
@@ -506,10 +560,7 @@ public class Repository {
         }
 
         /** read the commit object from the objects directory. */
-        String dirName = commitSHA1.substring(0, 2);
-        String fileName = commitSHA1.substring(2);
-        File commitFile = join(OBJECTS_DIR, dirName, fileName);
-        return Utils.readObject(commitFile, Commit.class);
+        return getCommitBySHA1(commitSHA1);
     }
 
     /** aux function: get a commit by its SHA1. */
@@ -517,7 +568,60 @@ public class Repository {
         String dirName = commitSHA1.substring(0, 2);
         String fileName = commitSHA1.substring(2);
         File commitFile = join(OBJECTS_DIR, dirName, fileName);
-        return Utils.readObject(commitFile, Commit.class);
+        return readObject(commitFile, Commit.class);
+    }
+
+    /** aux function: get a commit by 6 digits prefix of SHA1. */
+    public static Commit getCommitByPrefixSHA1(String commitSHA1) {
+        if (commitSHA1.length() < 2) {
+            throw error("Commit id must be at least 2 characters.");
+        }
+
+        String dirName = commitSHA1.substring(0, 2);
+        String restPrefix = commitSHA1.substring(2);
+        File commitDir = join(OBJECTS_DIR, dirName);
+
+        if (!commitDir.exists() || !commitDir.isDirectory()) {
+            throw error("No commit with that id exists.");
+        }
+
+        /** search for the commit file with the given prefix. */
+        List<String> allFiles = plainFilenamesIn(commitDir);
+        List<String> candidates = new ArrayList<>();
+
+        for (String fileName : allFiles) {
+            if (fileName.startsWith(restPrefix)) {
+                String fullSHA1 = dirName + fileName;
+
+                /** check if it's Commit instead of blobs */
+                if (isCommit(fullSHA1)) {
+                    candidates.add(fullSHA1);
+                }
+            }
+        }
+
+        /** check if there are 2 or more candidates. */
+        if (candidates.isEmpty()) {
+            throw error("No commit with that id exists.");
+        } else if (candidates.size() > 1) {
+            throw error("Ambiguous ID prefix: more than one commit matches.");
+        }
+
+        return getCommitBySHA1(candidates.get(0));
+    }
+
+    /** aux function: check if a SHA1 refers to a commit object. */
+    private static boolean isCommit(String sha1) {
+        String dirName = sha1.substring(0, 2);
+        String fileName = sha1.substring(2);
+
+        File file = join(OBJECTS_DIR, dirName, fileName); // 之前写的路径拼接函数
+        try {
+            readObject(file, Commit.class);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /** aux function: clear the staging area. */
@@ -538,5 +642,85 @@ public class Repository {
         SimpleDateFormat formatter = new SimpleDateFormat("EEE MMM d HH:mm:ss yyyy Z",
                 Locale.US);
         return formatter.format(date);
+    }
+
+    /** aux function: get SHA1 of file from commit,
+     * then call writeBlobsToCWD() to restore it.
+     */
+    private static void restoreFilesFromCommit(Commit commit, String fileName) {
+        String SHA1 = commit.getBlobSHA1(fileName);
+        if (SHA1 == null) {
+            throw error("File does not exist in that commit.");
+        }
+        writeBlobsToCWD(fileName, SHA1);
+    }
+
+    /** aux function: write blob content to CWD. */
+    private static void writeBlobsToCWD(String fileName, String blobSHA1) {
+        String dirName = blobSHA1.substring(0, 2);
+        String filePart = blobSHA1.substring(2);
+        File blobFile = join(OBJECTS_DIR, dirName, filePart);
+
+        byte[] content = Utils.readContents(blobFile);
+
+        File fileInCWD = join(CWD, fileName);
+
+        Utils.writeContents(fileInCWD, content);
+    }
+
+    /** aux function: check if targetBranchName is current branch */
+    public static boolean isCurrentBranch(String targetBranchName) {
+        String headContent = Utils.readContentsAsString(HEAD).trim();
+        File currentBranchFile = Utils.join(GITLET_DIR, headContent);
+        File targetBranchFile = Utils.join(REFS_DIR, "heads", targetBranchName);
+        return currentBranchFile.equals(targetBranchFile);
+    }
+
+    /** aux function: check for untracked files that would be overwritten. */
+    private static void checkUntrackedConflict(Commit targetCommit, Commit currentCommit) {
+        List<String> untrackedFiles = findUntrackedFiles(currentCommit);
+        Map<String, String> targetBlobs = targetCommit.getBlobs();
+        Map<String, String> currentBlobs = currentCommit.getBlobs();
+
+        for (String untrackedFile : untrackedFiles) {
+            if (targetBlobs.containsKey(untrackedFile)
+                    && !currentBlobs.containsKey(untrackedFile)) {
+                throw error("There is an untracked file in the way; "
+                        + "delete it, or add and commit it first.");
+            }
+        }
+    }
+
+    /** aux function: find all untracked files.
+     * @return: a list of all untracked files. */
+    private static List<String> findUntrackedFiles(Commit commit) {
+        List<String> untrackedFiles = new ArrayList<>();
+        List<String> cwdFiles = plainFilenamesIn(CWD);
+        if (cwdFiles == null) {
+            throw error("No cwd files found.");
+        }
+
+        Map<String, String> trackedBlobs = commit.getBlobs();
+
+        for (String fileName : cwdFiles) {
+            if (!trackedBlobs.containsKey(fileName)) {
+                untrackedFiles.add(fileName);
+            }
+        }
+        return untrackedFiles;
+    }
+
+
+    /** aux function: delete files tracked in current commit
+     * but not in target commit. */
+    private static void clearOldTrackedFiles(Commit targetCommit, Commit currentCommit) {
+        Map<String, String> currentBlobs = currentCommit.getBlobs();
+        Map<String, String> targetBlobs = targetCommit.getBlobs();
+
+        for (String fileName : currentBlobs.keySet()) {
+            if (!targetBlobs.containsKey(fileName)) {
+                Utils.restrictedDelete(join(CWD, fileName));
+            }
+        }
     }
 }

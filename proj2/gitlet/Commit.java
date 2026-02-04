@@ -34,6 +34,8 @@ public class Commit implements Serializable {
     /** The mapping of file names to blob SHA-1s in this Commit. */
     private Map<String, String> blobs;
 
+    private static final long serialVersionUID = 123456789L;
+
     /* TODO: fill in the rest of this class. */
     /** create a new commit. Default constructor
      * is used for init a gitlet vault. */
@@ -76,7 +78,7 @@ public class Commit implements Serializable {
     public String getFirstParent() {
         if (parents == null || parents.isEmpty())
             return null;
-        return parents.getFirst();
+        return parents.get(0);
     }
 
     /** get the second parent of this commit
