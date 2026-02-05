@@ -270,6 +270,18 @@ public class Repository {
 
         /** print the modifications not staged for commit. */
         System.out.println("=== Modifications Not Staged For Commit ===");
+
+        System.out.println();
+
+
+        /** print the untracked files */
+        List<String> untrackedFiles = findUntrackedFiles(getCurrentCommit());
+        Collections.sort(untrackedFiles);
+        System.out.println("=== Untracked Files ===");
+        for (String file : untrackedFiles) {
+            System.out.println(file);
+        }
+        System.out.println();
     }
 
     /** gitlet log
