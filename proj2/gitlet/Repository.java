@@ -106,6 +106,9 @@ public class Repository {
         /** get the current commit. */
         Commit currentCommit = getCurrentCommit();
 
+        /** initialize an ignore list */
+        GitletIgnore ignore = new GitletIgnore();
+
         /** get all files in the current working directory. */
         List<String> fileNames = plainFilenamesIn(CWD);
         if (fileNames == null) {
@@ -114,8 +117,9 @@ public class Repository {
 
         /** add each file to the staging area. */
         for (String fileName : fileNames) {
-            /** TODO: ignore hidden files in .gitletIgnore */
+            /** ignore hidden files in .gitletIgnore */
             if (fileName.startsWith(".")) continue;
+            if (ignore.isIgnored(fileName)) continue;
 
             stageSingleFile(fileName, stage, currentCommit);
         }
@@ -708,6 +712,7 @@ public class Repository {
     private static List<String> findUntrackedFiles(Commit commit) {
         List<String> untrackedFiles = new ArrayList<>();
         List<String> cwdFiles = plainFilenamesIn(CWD);
+        GitletIgnore ignore = new GitletIgnore();
         if (cwdFiles == null) {
             throw error("No cwd files found.");
         }
@@ -715,7 +720,7 @@ public class Repository {
         Map<String, String> trackedBlobs = commit.getBlobs();
 
         for (String fileName : cwdFiles) {
-            if (!trackedBlobs.containsKey(fileName)) {
+            if (!trackedBlobs.containsKey(fileName) && !ignore.isIgnored(fileName)) {
                 untrackedFiles.add(fileName);
             }
         }
