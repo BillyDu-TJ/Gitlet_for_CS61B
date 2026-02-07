@@ -19,9 +19,8 @@ import static gitlet.Utils.*;
 public class Repository {
     /**
      * TODO:
-     * 1. add .gitletignore support in add command.
-     * 2. refractor status function.
-     * 3. handle recursion files and directories.
+     * 1. handle recursion files and directories.
+     * 2. branch related operations.
      *
      * List all instance variables of the Repository class here with a useful
      * comment above them describing what that variable represents and how that
@@ -425,6 +424,46 @@ public class Repository {
 
         /** clear the staging area. */
         clearStage();
+    }
+
+    /** gitlet branch [branch name]
+     * create a new branch with the given name. */
+    public static void branch(String branchName) {
+        /** check if the repository is initialized. */
+        checkInit();
+
+        /** check if the branch already exists. */
+        File branchRefFile = join(REFS_DIR, "heads", branchName);
+        if (branchRefFile.exists()) {
+            throw error("A branch with that name already exists.");
+        }
+
+        /** get the current commit SHA1. */
+        String currentCommitSHA1 = readHEAD();
+
+        /** create a new branch ref file and point it to the current commit. */
+        Utils.writeContents(branchRefFile, currentCommitSHA1);
+    }
+
+    /** gitlet rm-branch [branch name]
+     * remove the branch with the given name. */
+    public static void rm_branch(String branchName) {
+        /** check if the repository is initialized. */
+        checkInit();
+
+        /** check if the branch exists. */
+        File branchRefFile = join(REFS_DIR, "heads", branchName);
+        if (!branchRefFile.exists()) {
+            throw error("A branch with that name does not exist.");
+        }
+
+        /** check if the branch is the current branch. */
+        if (isCurrentBranch(branchName)) {
+            throw error("Cannot remove the current branch.");
+        }
+
+        /** delete the branch ref file. */
+        Utils.restrictedDelete(branchRefFile);
     }
 
     /** aux function: check if the repository is initialized. */

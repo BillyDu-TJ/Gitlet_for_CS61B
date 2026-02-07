@@ -60,10 +60,14 @@ public class Main {
                     handleCheckout(args);
                     break;
                 case "branch":
-                    //TODO: implement branch
+                    validateNumArgs(args, 2);
+                    String branchName = args[1];
+                    Repository.branch(branchName);
                     break;
                 case "rm-branch":
-                    //TODO: implement rm-branch
+                    validateNumArgs(args, 2);
+                    String branchToRm = args[1];
+                    Repository.rm_branch(branchToRm);
                     break;
                 case "reset":
                     //TODO: implement reset
