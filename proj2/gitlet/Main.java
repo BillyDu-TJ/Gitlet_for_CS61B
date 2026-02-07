@@ -111,7 +111,7 @@ public class Main {
             if (!args[2].equals("--")) {
                 throw error("Incorrect operands.");
             }
-            Repository.checkoutCommit(args[1], args[3]);
+            Repository.checkoutCommitFile(args[1], args[3]);
         } else if (args.length == 2) {
             // checkout [branch name]
             Repository.checkoutBranch(args[1]);

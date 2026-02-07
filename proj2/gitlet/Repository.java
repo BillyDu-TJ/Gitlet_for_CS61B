@@ -365,13 +365,13 @@ public class Repository {
 
         /** call checkoutCommit with the current commit ID. */
         String currentCommitID = readHEAD();
-        checkoutCommit(currentCommitID, fileName);
+        checkoutCommitFile(currentCommitID, fileName);
     }
 
     /** gitlet checkout [commit id] -- [file name]
      * @param commitID: the commit id is the 6 digits prefix of SHA1 or full.
      */
-    public static void checkoutCommit(String commitID, String fileName) {
+    public static void checkoutCommitFile(String commitID, String fileName) {
         /** check if the repository is initialized. */
         checkInit();
 
@@ -399,9 +399,24 @@ public class Repository {
             throw error("No need to checkout the current branch.");
         }
 
-        /** get the commit that the branch points to and current commit. */
+        /** get the commit that the branch points to and current commit.
+         * checkout all files. */
         String targetCommitSHA1 = Utils.readContentsAsString(branchRefFile).trim();
-        Commit targetCommit = getCommitBySHA1(targetCommitSHA1);
+        checkoutCommit(targetCommitSHA1);
+
+        /** update HEAD to point to the target branch. */
+        updateHeadToBranch(branchName);
+
+        /** clear the staging area. */
+        clearStage();
+    }
+
+    /** aux function: checkout to a specific commit.
+     * @param commitID: the commit id is the 6 digits prefix of SHA1 or full.
+     */
+    private static void checkoutCommit(String commitID) {
+        /** get the commit that the branch points to and current commit. */
+        Commit targetCommit = getCommitBySHA1(commitID);
         Map<String, String> targetBlobs = targetCommit.getBlobs();
 
         Commit currentCommit = getCurrentCommit();
@@ -418,12 +433,6 @@ public class Repository {
         for (String fileName : targetBlobs.keySet()) {
             restoreFilesFromCommit(targetCommit, fileName);
         }
-
-        /** update HEAD to point to the target branch. */
-        updateHeadToBranch(branchName);
-
-        /** clear the staging area. */
-        clearStage();
     }
 
     /** gitlet branch [branch name]
@@ -464,6 +473,37 @@ public class Repository {
 
         /** delete the branch ref file. */
         Utils.restrictedDelete(branchRefFile);
+    }
+
+    /** gitlet reset [commit id]
+     * reset the current branch to the given commit.
+     * @param commitID: the commit id is the 6 digits prefix of SHA1 or full.
+     *                 if user provides 6 digits prefix, we get the full commit.
+     * */
+    public static void reset(String commitID) {
+        /** check if the repository is initialized. */
+        checkInit();
+
+
+        /** get full hash, prevent store 6 digits prefix into head file. */
+        Commit commit;
+        if (commitID.length() < UID_LENGTH) {
+            commit = getCommitByPrefixSHA1(commitID);
+        }
+        else {
+            /** check the commitID is valid or not,
+             * and also get the commit. */
+            commit = getCommitBySHA1(commitID);
+        }
+
+        /** checkout the commit. */
+        checkoutCommit(commitID);
+
+        /** change the current branch to point to the commit. */
+        saveHead(sha1(serialize(commit)));
+
+        /** clear the staging area. */
+        clearStage();
     }
 
     /** aux function: check if the repository is initialized. */
@@ -623,6 +663,9 @@ public class Repository {
         String dirName = commitSHA1.substring(0, 2);
         String fileName = commitSHA1.substring(2);
         File commitFile = join(OBJECTS_DIR, dirName, fileName);
+        if (!commitFile.exists()) {
+            throw error("No commit with that id exists.");
+        }
         return readObject(commitFile, Commit.class);
     }
 
