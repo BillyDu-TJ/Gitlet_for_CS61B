@@ -1,5 +1,0 @@
-<<<<<<< HEAD
-This is file 3.
-This is the 2nd version in master.=======
-This is file 3.
-This is the 2nd version in branch1.>>>>>>>
