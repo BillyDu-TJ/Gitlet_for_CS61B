@@ -27,26 +27,43 @@ public class Repository {
      * variable is used. We've provided two examples for you.
      */
 
-    /** The current working directory. */
+    /**
+     * The current working directory.
+     */
     public static final File CWD = new File(System.getProperty("user.dir"));
-    /** The .gitlet directory. */
+    /**
+     * The .gitlet directory.
+     */
     public static final File GITLET_DIR = join(CWD, ".gitlet");
-    /** The directory where commits and blobs are stored. */
+    /**
+     * The directory where commits and blobs are stored.
+     */
     public static final File OBJECTS_DIR = join(GITLET_DIR, "objects");
-    /** The directory where heads are stored. */
+    /**
+     * The directory where heads are stored.
+     */
     public static final File REFS_DIR = new File(GITLET_DIR, "refs");
-    /** The directory where logs are stored. */
+    /**
+     * The directory where logs are stored.
+     */
     public static final File LOGS_DIR = join(GITLET_DIR, "logs");
-    /** The directory where stage located. */
+    /**
+     * The directory where stage located.
+     */
     public static final File STAGING = join(GITLET_DIR, "staging");
 
-    /** The HEAD pointer */
+    /**
+     * The HEAD pointer
+     */
     public static final File HEAD = join(GITLET_DIR, "HEAD");
 
 
     /* TODO: fill in the rest of this class. */
-    /** gitlet init
-     * Initialize a gitlet repository in the current working directory. */
+
+    /**
+     * gitlet init
+     * Initialize a gitlet repository in the current working directory.
+     */
     public static void initRepo() {
         /** check if a gitlet repository already exists. */
         if (GITLET_DIR.exists()) {
@@ -75,8 +92,10 @@ public class Repository {
 
     }
 
-    /** gitlet add [file name]
-     * add blobs to the staging area. */
+    /**
+     * gitlet add [file name]
+     * add blobs to the staging area.
+     */
     public static void add(String fileName) {
         /** check if the repository is initialized. */
         checkInit();
@@ -92,7 +111,8 @@ public class Repository {
         Utils.writeObject(STAGING, stage);
     }
 
-    /** gitlet add .
+    /**
+     * gitlet add .
      * add all files in the current working directory to the staging area.
      */
     public static void addAll() {
@@ -127,11 +147,20 @@ public class Repository {
         Utils.writeObject(STAGING, stage);
     }
 
-    /** gitlet commit [message]
+    /**
+     * gitlet commit [message]
      * create a new commit with the staged files.
-     * TODO: handle the situation of 2 or more parents(merge).
-     * */
+     */
     public static void commit(String message) {
+        commit(message, null);
+    }
+
+    /**
+     * aux function for merge:
+     * create a new commit with the staged files.
+     * @param secondParentSHA1: the second parent commit SHA1 in merge.
+     */
+    public static void commit(String message, String secondParentSHA1) {
         /** check if the repository is initialized. */
         checkInit();
 
@@ -168,6 +197,12 @@ public class Repository {
         /** create a new commit object. */
         List<String> parentCommits = new ArrayList<>();
         parentCommits.add(readHEAD());
+
+        // if there is a second parent(in merge), add it to the parent commits list
+        if (secondParentSHA1 != null && !secondParentSHA1.isEmpty()) {
+            parentCommits.add(secondParentSHA1);
+        }
+
         Commit newCommit = new Commit(message, parentCommits, newBlobMapping);
 
         /** save the new commit to the objects directory. */
@@ -180,9 +215,11 @@ public class Repository {
         clearStage();
     }
 
-    /** gitlet rm [file name]
+    /**
+     * gitlet rm [file name]
      * remove a file from the staging area or
-     * mark it for removal in the next commit. */
+     * mark it for removal in the next commit.
+     */
     public static void rm(String fileName) {
         /** check if the repository is initialized. */
         checkInit();
@@ -220,8 +257,10 @@ public class Repository {
         Utils.writeObject(STAGING, stage);
     }
 
-    /** gitlet status
-     * show the status of the repository. */
+    /**
+     * gitlet status
+     * show the status of the repository.
+     */
     public static void status() {
         /** check if the repository is initialized. */
         checkInit();
@@ -287,7 +326,8 @@ public class Repository {
         System.out.println();
     }
 
-    /** gitlet log
+    /**
+     * gitlet log
      * show the commit history.
      */
     public static void log() {
@@ -311,19 +351,21 @@ public class Repository {
         }
     }
 
-    /** gitlet global-log
+    /**
+     * gitlet global-log
      * use BFS to show all commits in repository.
      * differs from CS61B's demand:
      * 1. it's similar to 'git log --all' in real git.
-     *    will not print dangling commits.
+     * will not print dangling commits.
      * 2. the order of commits is not strictly defined.
-     * */
+     *
+     */
     public static void global_log() {
         /** check if the repository is initialized. */
         checkInit();
 
         /** get the latest version commit of every branch. */
-        List<String> allBranchHeadName = plainFilenamesIn( join(REFS_DIR ,"heads"));
+        List<String> allBranchHeadName = plainFilenamesIn(join(REFS_DIR, "heads"));
         List<String> branchHeadCommits = new ArrayList<>();
         for (String branchName : allBranchHeadName) {
             File headFile = join(REFS_DIR, "heads", branchName);
@@ -358,7 +400,9 @@ public class Repository {
         }
     }
 
-    /** gitlet checkout -- [file name] */
+    /**
+     * gitlet checkout -- [file name]
+     */
     public static void checkoutFile(String fileName) {
         /** check if the repository is initialized. */
         checkInit();
@@ -368,7 +412,9 @@ public class Repository {
         checkoutCommitFile(currentCommitID, fileName);
     }
 
-    /** gitlet checkout [commit id] -- [file name]
+    /**
+     * gitlet checkout [commit id] -- [file name]
+     *
      * @param commitID: the commit id is the 6 digits prefix of SHA1 or full.
      */
     public static void checkoutCommitFile(String commitID, String fileName) {
@@ -385,7 +431,9 @@ public class Repository {
         restoreFilesFromCommit(commit, fileName);
     }
 
-    /** gitlet checkout [branch name] */
+    /**
+     * gitlet checkout [branch name]
+     */
     public static void checkoutBranch(String branchName) {
         /** check if the repository is initialized. */
         checkInit();
@@ -411,7 +459,9 @@ public class Repository {
         clearStage();
     }
 
-    /** aux function: checkout to a specific commit.
+    /**
+     * aux function: checkout to a specific commit.
+     *
      * @param commitID: the commit id is the 6 digits prefix of SHA1 or full.
      */
     private static void checkoutCommit(String commitID) {
@@ -435,8 +485,10 @@ public class Repository {
         }
     }
 
-    /** gitlet branch [branch name]
-     * create a new branch with the given name. */
+    /**
+     * gitlet branch [branch name]
+     * create a new branch with the given name.
+     */
     public static void branch(String branchName) {
         /** check if the repository is initialized. */
         checkInit();
@@ -454,8 +506,10 @@ public class Repository {
         Utils.writeContents(branchRefFile, currentCommitSHA1);
     }
 
-    /** gitlet rm-branch [branch name]
-     * remove the branch with the given name. */
+    /**
+     * gitlet rm-branch [branch name]
+     * remove the branch with the given name.
+     */
     public static void rm_branch(String branchName) {
         /** check if the repository is initialized. */
         checkInit();
@@ -475,11 +529,14 @@ public class Repository {
         Utils.restrictedDelete(branchRefFile);
     }
 
-    /** gitlet reset [commit id]
+    /**
+     * gitlet reset [commit id]
      * reset the current branch to the given commit.
+     *
      * @param commitID: the commit id is the 6 digits prefix of SHA1 or full.
-     *                 if user provides 6 digits prefix, we get the full commit.
-     * */
+     *                  if user provides 6 digits prefix, we get the full commit.
+     *
+     */
     public static void reset(String commitID) {
         /** check if the repository is initialized. */
         checkInit();
@@ -489,8 +546,7 @@ public class Repository {
         Commit commit;
         if (commitID.length() < UID_LENGTH) {
             commit = getCommitByPrefixSHA1(commitID);
-        }
-        else {
+        } else {
             /** check the commitID is valid or not,
              * and also get the commit. */
             commit = getCommitBySHA1(commitID);
@@ -506,14 +562,93 @@ public class Repository {
         clearStage();
     }
 
-    /** aux function: check if the repository is initialized. */
+    /**
+     * gitlet merge [branch name]
+     * merge the given branch into the current branch.
+     *
+     */
+    public static void merge(String branchName) {
+        /** check if the repository is initialized. */
+        checkInit();
+
+        /** --- Stage 1 ---
+         * check pre-conditions for merge operation.
+         */
+        File branchRefFile = join(REFS_DIR, "heads", branchName);
+        Stage stage = readStage();
+
+        /** check if the branch exists. */
+        if (!branchRefFile.exists()) {
+            throw error("A branch with that name does not exist.");
+        }
+        /** check if the branch is the current branch. */
+        if (isCurrentBranch(branchName)) {
+            throw error("Cannot merge a branch with itself.");
+        }
+        /** check if the staging area is not empty. */
+        if (!stage.getAddFiles().isEmpty() || !stage.getRemoveFiles().isEmpty()) {
+            throw error("You have uncommitted changes.");
+        }
+        /** check untracked files that would be overwritten. */
+        String branchCommitSHA1 = Utils.readContentsAsString(branchRefFile).trim();
+        Commit branchCommit = getCommitBySHA1(branchCommitSHA1);
+        Commit currentCommit = getCurrentCommit();
+        checkUntrackedConflict(branchCommit, currentCommit);
+
+        /** --- Stage 2 ---
+         * find the split point commit.
+         */
+        Commit splitPoint = findSplitPoint(currentCommit, branchCommit);
+
+        /** handle special cases. */
+        if (splitPoint == null) {
+            throw error("No splitPoint found.");
+        }
+
+        if (splitPoint == branchCommit) {
+            System.out.println("Given branch is an ancestor of the current branch.");
+            return;
+        }
+
+        if (splitPoint == currentCommit) {
+            checkoutCommit(branchCommitSHA1);
+            saveHead(branchCommitSHA1);
+            System.out.println("Current branch fast-forwarded.");
+            return;
+        }
+
+        /** --- Stage 3 ---
+         * perform the merge operation.
+         * this includes 8 cases.
+         */
+         boolean isConflict = handleMergeCases(splitPoint, currentCommit, branchCommit, branchName);
+
+         /** --- Stage 4 ---
+          * create a new merge commit.
+          */
+         String mergeMessage = "Merged " + branchName + " into "
+                 + getCurrentBranchName() + ".";
+         commit(mergeMessage, branchCommitSHA1);
+
+         if (isConflict) {
+             System.out.println("Encountered a merge conflict.");
+         }
+
+         clearStage();
+    }
+
+    /**
+     * aux function: check if the repository is initialized.
+     */
     private static void checkInit() {
         if (!GITLET_DIR.exists()) {
             throw error("Not in an initialized Gitlet directory.");
         }
     }
 
-    /** aux function: read the staging area. */
+    /**
+     * aux function: read the staging area.
+     */
     public static Stage readStage() {
         if (!STAGING.exists()) {
             return new Stage();
@@ -521,7 +656,9 @@ public class Repository {
         return Utils.readObject(STAGING, Stage.class);
     }
 
-    /** aux function: stage a single file. */
+    /**
+     * aux function: stage a single file.
+     */
     private static void stageSingleFile(String fileName, Stage stage, Commit currentCommit) {
         File file = join(CWD, fileName);
         if (!file.exists()) {
@@ -565,8 +702,10 @@ public class Repository {
         }
     }
 
-    /** aux function: read HEAD, and return the contents
-     * that HEAD refers, which is the SHA1 of current commit. */
+    /**
+     * aux function: read HEAD, and return the contents
+     * that HEAD refers, which is the SHA1 of current commit.
+     */
     public static String readHEAD() {
         String headRef = Utils.readContentsAsString(HEAD).trim();
         File headFile = join(GITLET_DIR, headRef);
@@ -585,15 +724,28 @@ public class Repository {
         writeContents(HEAD, refPath);
     }
 
-    /** aux function: save HEAD
-     * situation: update the current branch to point to the new commit. */
+    /** aux function: get the current branch name.
+     */
+    public static String getCurrentBranchName() {
+        String headRef = Utils.readContentsAsString(HEAD).trim();
+        if (!headRef.startsWith("refs/heads/")) {
+            throw error("HEAD is not pointing to a branch.");
+        }
+        return headRef.substring("refs/heads/".length());
+    }
+
+    /**
+     * aux function: save HEAD
+     * situation: update the current branch to point to the new commit.
+     */
     public static void saveHead(String commitSHA1) {
         String headRef = Utils.readContentsAsString(HEAD).trim();
         File headFile = join(GITLET_DIR, headRef);
         Utils.writeContents(headFile, commitSHA1);
     }
 
-    /** aux function: save a blob object to the objects directory.
+    /**
+     * aux function: save a blob object to the objects directory.
      */
     public static void saveBlob(byte[] content) {
         String SHA1 = Utils.sha1(content);
@@ -620,7 +772,9 @@ public class Repository {
         Utils.writeContents(file, content);
     }
 
-    /** aux function: save a commit object to the objects directory.
+    /**
+     * aux function: save a commit object to the objects directory.
+     *
      * @return : the SHA1 of the commit object.
      */
     public static String saveCommit(Commit commit) {
@@ -647,7 +801,9 @@ public class Repository {
         return SHA1;
     }
 
-    /** aux function: get the current commit. */
+    /**
+     * aux function: get the current commit.
+     */
     public static Commit getCurrentCommit() {
         String commitSHA1 = readHEAD();
         if (commitSHA1 == null) {
@@ -658,7 +814,9 @@ public class Repository {
         return getCommitBySHA1(commitSHA1);
     }
 
-    /** aux function: get a commit by its SHA1. */
+    /**
+     * aux function: get a commit by its SHA1.
+     */
     public static Commit getCommitBySHA1(String commitSHA1) {
         String dirName = commitSHA1.substring(0, 2);
         String fileName = commitSHA1.substring(2);
@@ -669,7 +827,9 @@ public class Repository {
         return readObject(commitFile, Commit.class);
     }
 
-    /** aux function: get a commit by 6 digits prefix of SHA1. */
+    /**
+     * aux function: get a commit by 6 digits prefix of SHA1.
+     */
     public static Commit getCommitByPrefixSHA1(String commitSHA1) {
         if (commitSHA1.length() < 2) {
             throw error("Commit id must be at least 2 characters.");
@@ -708,7 +868,9 @@ public class Repository {
         return getCommitBySHA1(candidates.get(0));
     }
 
-    /** aux function: check if a SHA1 refers to a commit object. */
+    /**
+     * aux function: check if a SHA1 refers to a commit object.
+     */
     private static boolean isCommit(String sha1) {
         String dirName = sha1.substring(0, 2);
         String fileName = sha1.substring(2);
@@ -722,27 +884,34 @@ public class Repository {
         }
     }
 
-    /** aux function: clear the staging area. */
+    /**
+     * aux function: clear the staging area.
+     */
     public static void clearStage() {
         Stage emptyStage = new Stage();
         Utils.writeObject(Repository.STAGING, emptyStage);
     }
 
-    /** sort name list */
+    /**
+     * sort name list
+     */
     private static List<String> sortNameList(Set<String> names) {
         List<String> NamesList = new ArrayList<>(names);
         Collections.sort(NamesList);
         return NamesList;
     }
 
-    /** aux function: format current date */
+    /**
+     * aux function: format current date
+     */
     public static String formatDate(Date date) {
         SimpleDateFormat formatter = new SimpleDateFormat("EEE MMM d HH:mm:ss yyyy Z",
                 Locale.US);
         return formatter.format(date);
     }
 
-    /** aux function: get SHA1 of file from commit,
+    /**
+     * aux function: get SHA1 of file from commit,
      * then call writeBlobsToCWD() to restore it.
      */
     private static void restoreFilesFromCommit(Commit commit, String fileName) {
@@ -753,7 +922,9 @@ public class Repository {
         writeBlobsToCWD(fileName, SHA1);
     }
 
-    /** aux function: write blob content to CWD. */
+    /**
+     * aux function: write blob content to CWD.
+     */
     private static void writeBlobsToCWD(String fileName, String blobSHA1) {
         String dirName = blobSHA1.substring(0, 2);
         String filePart = blobSHA1.substring(2);
@@ -766,7 +937,23 @@ public class Repository {
         Utils.writeContents(fileInCWD, content);
     }
 
-    /** aux function: check if targetBranchName is current branch */
+    /** aux function: read file content from SHA1
+     * and turn to string.
+     */
+    private static String getBlobContentAsString(String blobSHA1) {
+        if (blobSHA1 == null) {
+            return "";
+        }
+        String dirName = blobSHA1.substring(0, 2);
+        String filePart = blobSHA1.substring(2);
+        File blobFile = join(OBJECTS_DIR, dirName, filePart);
+
+        return Utils.readContentsAsString(blobFile);
+    }
+
+    /**
+     * aux function: check if targetBranchName is current branch
+     */
     public static boolean isCurrentBranch(String targetBranchName) {
         String headContent = Utils.readContentsAsString(HEAD).trim();
         File currentBranchFile = Utils.join(GITLET_DIR, headContent);
@@ -774,7 +961,9 @@ public class Repository {
         return currentBranchFile.equals(targetBranchFile);
     }
 
-    /** aux function: check for untracked files that would be overwritten. */
+    /**
+     * aux function: check for untracked files that would be overwritten.
+     */
     private static void checkUntrackedConflict(Commit targetCommit, Commit currentCommit) {
         List<String> untrackedFiles = findUntrackedFiles(currentCommit);
         Map<String, String> targetBlobs = targetCommit.getBlobs();
@@ -784,13 +973,16 @@ public class Repository {
             if (targetBlobs.containsKey(untrackedFile)
                     && !currentBlobs.containsKey(untrackedFile)) {
                 throw error("There is an untracked file in the way; "
-                        + "delete it, or add and commit it first.");
+                        + "delete it, or add it first.");
             }
         }
     }
 
-    /** aux function: find all untracked files.
-     * @return: a list of all untracked files. */
+    /**
+     * aux function: find all untracked files.
+     *
+     * @return: a list of all untracked files.
+     */
     private static List<String> findUntrackedFiles(Commit commit) {
         List<String> untrackedFiles = new ArrayList<>();
         List<String> cwdFiles = plainFilenamesIn(CWD);
@@ -810,8 +1002,10 @@ public class Repository {
     }
 
 
-    /** aux function: delete files tracked in current commit
-     * but not in target commit. */
+    /**
+     * aux function: delete files tracked in current commit
+     * but not in target commit.
+     */
     private static void clearOldTrackedFiles(Commit targetCommit, Commit currentCommit) {
         Map<String, String> currentBlobs = currentCommit.getBlobs();
         Map<String, String> targetBlobs = targetCommit.getBlobs();
@@ -821,5 +1015,155 @@ public class Repository {
                 Utils.restrictedDelete(join(CWD, fileName));
             }
         }
+    }
+
+    /**
+     * aux function: find the split point commit between two commits.
+     * use BFS to find the split point.
+     *
+     * @return commit: the commit of split point.
+     */
+    private static Commit findSplitPoint(Commit currentCommit, Commit branchCommit) {
+        /** use a map to store all ancestors of current commit.
+         * key: commit SHA1, value: distance from current commit.
+         * use BFS to traverse all ancestors of current commit.
+         * */
+        Map<String, Integer> currentAncestors = new HashMap<>();
+        Queue<Commit> queue = new LinkedList<>();
+        queue.add(currentCommit);
+
+        while (queue.size() > 0) {
+            Commit commit = queue.poll();
+            String commitSHA1 = sha1(serialize(commit));
+
+            if (currentAncestors.containsKey(commitSHA1)) {
+                continue;
+            }
+
+            int distance = currentAncestors.getOrDefault(commitSHA1, 0);
+            currentAncestors.put(commitSHA1, distance);
+
+            String parent1SHA1 = commit.getFirstParent();
+            String parent2SHA1 = commit.getSecondParent();
+
+            if (parent1SHA1 != null) {
+                queue.add(getCommitBySHA1(parent1SHA1));
+            }
+            if (parent2SHA1 != null) {
+                queue.add(getCommitBySHA1(parent2SHA1));
+            }
+        }
+
+        /** use BFS to traverse all ancestors of branch commit.
+         * the first ancestor found in currentAncestors is the split point.
+         * */
+        queue.add(branchCommit);
+
+        while (queue.size() > 0) {
+            Commit commit = queue.poll();
+            String commitSHA1 = sha1(serialize(commit));
+
+            if (currentAncestors.containsKey(commitSHA1)) {
+                return commit;
+            }
+
+            String parent1SHA1 = commit.getFirstParent();
+            String parent2SHA1 = commit.getSecondParent();
+
+            if (parent1SHA1 != null) {
+                queue.add(getCommitBySHA1(parent1SHA1));
+            }
+            if (parent2SHA1 != null) {
+                queue.add(getCommitBySHA1(parent2SHA1));
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * aux function: handle the 8 merge cases.
+     *
+     * @param splitPoint:    the split point commit.
+     * @param currentCommit: the current branch commit.
+     * @param branchCommit:  the given branch commit.
+     * @param branchName:    the given branch name.
+     * @return : true if there is a conflict, false otherwise.
+     */
+    private static boolean handleMergeCases(Commit splitPoint, Commit currentCommit,
+                                            Commit branchCommit, String branchName) {
+        boolean conflict = false;
+
+        /** put all files of their names into a set*/
+        Set<String> allFiles = new HashSet<>();
+        allFiles.addAll(splitPoint.getBlobs().keySet());
+        allFiles.addAll(currentCommit.getBlobs().keySet());
+        allFiles.addAll(branchCommit.getBlobs().keySet());
+
+        for (String fileName : allFiles) {
+            String s = splitPoint.getBlobSHA1(fileName);
+            String c = currentCommit.getBlobSHA1(fileName);
+            String b = branchCommit.getBlobSHA1(fileName);
+
+            if (Objects.equals(s, c)) {
+                /** case 1: s = A, c = A, b = B
+                 *  case 4: s= null, c = null, b = B
+                 *  checkout b, stage b */
+                if (b != null && !Objects.equals(s, b)) {
+                    writeBlobsToCWD(fileName, b);
+                    add(fileName);
+                } else if (b == null) {
+                    /** case 6: s = A, c = A, b = null
+                     * remove and unstage file */
+                    restrictedDelete(fileName);
+                    rm(fileName);
+                }
+            }
+            else if (Objects.equals(s, b)) {
+                /** case 2: s = A, c = B, b = A
+                 *  case 5: s = null, c = B, b = null
+                 *  keep head version, do nothing
+                 */
+                if (c != null && !Objects.equals(s, c)) {
+                    continue;
+                } else if (c == null) {
+                    /** case 7: s = A, c = null, b = A
+                     *  remain removed, do nothing */
+                    continue;
+                }
+            }
+            else if (Objects.equals(c, b) && c != null) {
+                /** case 3: s = A, c = B, b = B
+                 * keep head version, do nothing
+                 */
+                continue;
+            }
+            else {
+                /** case 8: conflict */
+                conflict = true;
+                handleMergeConflict(fileName, currentCommit, branchCommit);
+            }
+        }
+
+        return conflict;
+    }
+
+    /** aux function: handle merge conflict. */
+    private static void handleMergeConflict(String fileName, Commit currentCommit, Commit branchCommit) {
+        String currentContent = getBlobContentAsString(currentCommit.getBlobSHA1(fileName));
+        String branchContent = getBlobContentAsString(branchCommit.getBlobSHA1(fileName));
+
+        String conflictContent = "<<<<<<< HEAD\n"
+                + currentContent
+                + "=======\n"
+                + branchContent
+                + ">>>>>>>\n";
+
+        /** write the conflict content to the file in CWD. */
+        File fileInCWD = join(CWD, fileName);
+        Utils.writeContents(fileInCWD, conflictContent);
+
+        /** stage the file. */
+        add(fileName);
     }
 }

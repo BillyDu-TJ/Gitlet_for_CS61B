@@ -46,9 +46,11 @@ public class Main {
                     Repository.commit(message);
                     break;
                 case "log":
+                    validateNumArgs(args, 1);
                     Repository.log();
                     break;
                 case "global-log":
+                    validateNumArgs(args, 1);
                     Repository.global_log();
                     break;
                 case "rm":
@@ -70,10 +72,14 @@ public class Main {
                     Repository.rm_branch(branchToRm);
                     break;
                 case "reset":
-                    //TODO: implement reset
+                    validateNumArgs(args, 2);
+                    String commitId = args[1];
+                    Repository.reset(commitId);
                     break;
                 case "merge":
-                    //TODO: implement merge
+                    validateNumArgs(args, 2);
+                    String branchNameToMerge = args[1];
+                    Repository.merge(branchNameToMerge);
                     break;
                 default:
                     throw error("No command with that name exists.");

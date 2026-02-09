@@ -106,7 +106,13 @@ public class Commit implements Serializable {
 
         System.out.println("===");
         System.out.println("commit " + commitSHA1);
-        /** TODO: cope with the merge situation here. */
+
+        /** handle merge output. */
+        if (parents.size() > 1) {
+            String parent1 = parents.get(0).substring(0, 7);
+            String parent2 = parents.get(1).substring(0, 7);
+            System.out.println("Merge: " + parent1 + " " + parent2);
+        }
 
         System.out.println("Date: " + formatDate(timestamp));
         System.out.println(message);
