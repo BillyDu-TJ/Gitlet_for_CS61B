@@ -100,10 +100,9 @@ public class Commit implements Serializable {
     }
 
     /** format commit info to the required style
-     * and print. */
-    public void printCommit() {
-        String commitSHA1 = sha1(serialize(this));
-
+     * and print.
+     * @param commitSHA1 the SHA1 hash of this commit (passed from caller) */
+    public void printCommit(String commitSHA1) {
         System.out.println("===");
         System.out.println("commit " + commitSHA1);
 

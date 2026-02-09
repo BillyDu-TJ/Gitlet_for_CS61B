@@ -334,20 +334,22 @@ public class Repository {
         /** check if the repository is initialized. */
         checkInit();
 
-        /** get the current commit. */
-        Commit currentCommit = getCurrentCommit();
+        /** get the current commit SHA1. */
+        String currentCommitSHA1 = readHEAD();
+        Commit currentCommit = getCommitBySHA1(currentCommitSHA1);
 
         /** traverse the commit history. */
         while (currentCommit != null) {
             /** get the commit info. */
-            currentCommit.printCommit();
+            currentCommit.printCommit(currentCommitSHA1);
 
             /** move to the parent commit. */
             String parentSHA1 = currentCommit.getFirstParent();
             if (parentSHA1 == null) {
                 break;
             }
-            currentCommit = getCommitBySHA1(parentSHA1);
+            currentCommitSHA1 = parentSHA1;
+            currentCommit = getCommitBySHA1(currentCommitSHA1);
         }
     }
 
@@ -387,7 +389,7 @@ public class Repository {
                 continue;
 
             /** get the commit info. */
-            currentCommit.printCommit();
+            currentCommit.printCommit(currentCommitSHA1);
             visitedCommits.add(currentCommitSHA1);
 
             /** add parent commit(s) to the queue. */
@@ -541,25 +543,44 @@ public class Repository {
         /** check if the repository is initialized. */
         checkInit();
 
-
         /** get full hash, prevent store 6 digits prefix into head file. */
-        Commit commit;
+        String fullCommitSHA1;
         if (commitID.length() < UID_LENGTH) {
-            commit = getCommitByPrefixSHA1(commitID);
+            Commit commit = getCommitByPrefixSHA1(commitID);
+            // Need to get the full SHA1 from the file system
+            fullCommitSHA1 = findFullSHA1(commitID);
         } else {
-            /** check the commitID is valid or not,
-             * and also get the commit. */
-            commit = getCommitBySHA1(commitID);
+            /** check the commitID is valid or not. */
+            getCommitBySHA1(commitID);  // Just to validate
+            fullCommitSHA1 = commitID;
         }
 
         /** checkout the commit. */
-        checkoutCommit(commitID);
+        checkoutCommit(fullCommitSHA1);
 
         /** change the current branch to point to the commit. */
-        saveHead(sha1(serialize(commit)));
+        saveHead(fullCommitSHA1);
 
         /** clear the staging area. */
         clearStage();
+    }
+
+    /** aux function: find the full SHA1 from a prefix. */
+    private static String findFullSHA1(String prefix) {
+        String dirName = prefix.substring(0, 2);
+        String restPrefix = prefix.substring(2);
+        File commitDir = join(OBJECTS_DIR, dirName);
+
+        List<String> allFiles = plainFilenamesIn(commitDir);
+        for (String fileName : allFiles) {
+            if (fileName.startsWith(restPrefix)) {
+                String fullSHA1 = dirName + fileName;
+                if (isCommit(fullSHA1)) {
+                    return fullSHA1;
+                }
+            }
+        }
+        throw error("No commit with that id exists.");
     }
 
     /**
@@ -598,7 +619,8 @@ public class Repository {
         /** --- Stage 2 ---
          * find the split point commit.
          */
-        Commit splitPoint = findSplitPoint(currentCommit, branchCommit);
+        String currentCommitSHA1 = readHEAD();
+        Commit splitPoint = findSplitPoint(currentCommitSHA1, branchCommitSHA1);
 
         /** handle special cases. */
         if (splitPoint == null) {
@@ -633,8 +655,6 @@ public class Repository {
          if (isConflict) {
              System.out.println("Encountered a merge conflict.");
          }
-
-         clearStage();
     }
 
     /**
@@ -712,7 +732,7 @@ public class Repository {
         if (!headFile.exists()) {
             return null;
         }
-        return Utils.readContentsAsString(headFile);
+        return Utils.readContentsAsString(headFile).trim();
     }
 
     /**
@@ -1021,25 +1041,27 @@ public class Repository {
      * aux function: find the split point commit between two commits.
      * use BFS to find the split point.
      *
+     * @param currentCommitSHA1: the SHA1 of current commit
+     * @param branchCommitSHA1: the SHA1 of branch commit
      * @return commit: the commit of split point.
      */
-    private static Commit findSplitPoint(Commit currentCommit, Commit branchCommit) {
+    private static Commit findSplitPoint(String currentCommitSHA1, String branchCommitSHA1) {
         /** use a map to store all ancestors of current commit.
          * key: commit SHA1, value: distance from current commit.
          * use BFS to traverse all ancestors of current commit.
          * */
         Map<String, Integer> currentAncestors = new HashMap<>();
-        Queue<Commit> queue = new LinkedList<>();
-        queue.add(currentCommit);
+        Queue<String> queue = new LinkedList<>();
+        queue.add(currentCommitSHA1);
 
-        while (queue.size() > 0) {
-            Commit commit = queue.poll();
-            String commitSHA1 = sha1(serialize(commit));
+        while (!queue.isEmpty()) {
+            String commitSHA1 = queue.poll();
 
             if (currentAncestors.containsKey(commitSHA1)) {
                 continue;
             }
 
+            Commit commit = getCommitBySHA1(commitSHA1);
             int distance = currentAncestors.getOrDefault(commitSHA1, 0);
             currentAncestors.put(commitSHA1, distance);
 
@@ -1047,34 +1069,34 @@ public class Repository {
             String parent2SHA1 = commit.getSecondParent();
 
             if (parent1SHA1 != null) {
-                queue.add(getCommitBySHA1(parent1SHA1));
+                queue.add(parent1SHA1);
             }
             if (parent2SHA1 != null) {
-                queue.add(getCommitBySHA1(parent2SHA1));
+                queue.add(parent2SHA1);
             }
         }
 
         /** use BFS to traverse all ancestors of branch commit.
          * the first ancestor found in currentAncestors is the split point.
          * */
-        queue.add(branchCommit);
+        queue.add(branchCommitSHA1);
 
-        while (queue.size() > 0) {
-            Commit commit = queue.poll();
-            String commitSHA1 = sha1(serialize(commit));
+        while (!queue.isEmpty()) {
+            String commitSHA1 = queue.poll();
 
             if (currentAncestors.containsKey(commitSHA1)) {
-                return commit;
+                return getCommitBySHA1(commitSHA1);
             }
 
+            Commit commit = getCommitBySHA1(commitSHA1);
             String parent1SHA1 = commit.getFirstParent();
             String parent2SHA1 = commit.getSecondParent();
 
             if (parent1SHA1 != null) {
-                queue.add(getCommitBySHA1(parent1SHA1));
+                queue.add(parent1SHA1);
             }
             if (parent2SHA1 != null) {
-                queue.add(getCommitBySHA1(parent2SHA1));
+                queue.add(parent2SHA1);
             }
         }
 
